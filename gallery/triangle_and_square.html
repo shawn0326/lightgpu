@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Triangle and Square</title>
+    <style>
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import { GPU, Context } from '../src/index.js';
+        import vsCode from './shaders/vertex.glsl.js';
+        import fsCode from './shaders/fragment.glsl.js';
+        import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
+
+        let width = document.body.clientWidth;
+        let height =  document.body.clientHeight;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        document.body.appendChild(canvas);
+
+        let gpu = new GPU();
+        let context = new Context(canvas);
+
+        const triangleVertex = new Float32Array([
+            0.0, 1.0, 0.0,
+            -1.0, -1.0, 0.0,
+            1.0, -1.0, 0.0
+        ]);
+
+        const triangleIndex = new Uint32Array([0, 1, 2]);
+
+        const triangleMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([-1.5, 0.0, -7.0]));
+
+        const squareVertex = new Float32Array([
+            1.0, 1.0, 0.0,
+            -1.0, 1.0, 0.0,
+            1.0, -1.0, 0.0,
+            -1.0, -1.0, 0.0
+        ]);
+
+        const squareIndex = new Uint32Array([0, 1, 2, 1, 2, 3]);
+
+        const squareMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([1.5, 0.0, -7.0]));
+
+        const pMatrix = mat4.perspective(mat4.create(), Math.PI / 4, width / height, 0.1, 100);
+
+        let triangleUniformBufferView = new Float32Array(16 * 2);
+        triangleUniformBufferView.set(pMatrix);
+        triangleUniformBufferView.set(triangleMVMatrix, 16);
+
+        let squareUniformBufferView = new Float32Array(16 * 2);
+        squareUniformBufferView.set(pMatrix);
+        squareUniformBufferView.set(squareMVMatrix, 16);
+
+        console.log(context)
+        gpu.init()
+            .then(() => context.init(gpu.device))
+            .then(() => {
+                console.log(gpu, context)
+                // gpu.initRenderPass(
+                //     context.swapChain.getCurrentTexture().createView(),
+                //     { r: 0, g: 0, b: 0, a: 1.0 },
+                //     width,
+                //     height
+                // );
+                // gpu.initPipeline(vsCode, fsCode, context.format);
+
+                // gpu.initGPUBuffer(triangleVertex, triangleIndex, triangleUniformBufferView);
+
+                // gpu.draw(triangleIndex.length);
+
+                // gpu.initGPUBuffer(squareVertex, squareIndex, squareUniformBufferView);
+
+                // gpu.draw(squareIndex.length);
+
+                // gpu.present();
+            }).catch(e => console.error(e));
+    </script>
+</body>
+</html>
