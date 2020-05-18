@@ -33,7 +33,7 @@
         document.body.appendChild(canvas);
 
         let gpu = new GPU();
-        let context = new Context(canvas);
+        let context;
 
         const triangleVertex = new Float32Array([
             0.0, 1.0, 0.0,
@@ -56,7 +56,7 @@
 
         const squareMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([1.5, 0.0, -7.0]));
 
-        const pMatrix = mat4.perspective(mat4.create(), Math.PI / 4, width / height, 0.1, 100);
+        const pMatrix = mat4.perspective(mat4.create(), Math.PI / 4, width / height, 0.1, 50);
 
         let triangleUniformBufferView = new Float32Array(16 * 2);
         triangleUniformBufferView.set(pMatrix);
@@ -66,28 +66,29 @@
         squareUniformBufferView.set(pMatrix);
         squareUniformBufferView.set(squareMVMatrix, 16);
 
-        console.log(context)
         gpu.init()
-            .then(() => context.init(gpu.device))
             .then(() => {
-                console.log(gpu, context)
-                // gpu.initRenderPass(
-                //     context.swapChain.getCurrentTexture().createView(),
-                //     { r: 0, g: 0, b: 0, a: 1.0 },
-                //     width,
-                //     height
-                // );
-                // gpu.initPipeline(vsCode, fsCode, context.format);
+                context = new Context(canvas);
+                context.init(gpu.device);
+            })
+            .then(() => {
+                gpu.initRenderPass(
+                    context.swapChain.getCurrentTexture().createView(),
+                    { r: 0, g: 0, b: 0, a: 1.0 },
+                    width,
+                    height
+                );
+                gpu.initPipeline(vsCode, fsCode, context.format);
 
-                // gpu.initGPUBuffer(triangleVertex, triangleIndex, triangleUniformBufferView);
+                gpu.initGPUBuffer(triangleVertex, triangleIndex, triangleUniformBufferView);
 
-                // gpu.draw(triangleIndex.length);
+                gpu.draw(triangleIndex.length);
 
-                // gpu.initGPUBuffer(squareVertex, squareIndex, squareUniformBufferView);
+                gpu.initGPUBuffer(squareVertex, squareIndex, squareUniformBufferView);
 
-                // gpu.draw(squareIndex.length);
+                gpu.draw(squareIndex.length);
 
-                // gpu.present();
+                gpu.present();
             }).catch(e => console.error(e));
     </script>
 </body>

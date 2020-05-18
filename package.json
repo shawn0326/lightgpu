@@ -4,7 +4,7 @@
   "description": "A lightweight WebGPU library",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint src"
   },
   "repository": {
     "type": "git",
@@ -23,5 +23,8 @@
   "dependencies": {
     "@webgpu/glslang": "0.0.13",
     "gl-matrix": "^3.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.14.1"
   }
 }

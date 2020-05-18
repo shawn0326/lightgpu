@@ -1,4 +1,4 @@
-import glslangModule from '../node_modules/@webgpu/glslang/dist/web-devel/glslang.js';
+import glslangModule from '../node_modules/@webgpu/glslang/dist/web-devel/glslang.onefile.js';
 
 export default class GPU {
 
@@ -38,7 +38,7 @@ export default class GPU {
 
     initPipeline(vsCode, fsCode, format) {
         this.uniformGroupLayout = this.device.createBindGroupLayout({
-            bindings: [{
+            entries: [{
                 binding: 0,
                 visibility: GPUShaderStage.VERTEX,
                 type: 'uniform-buffer'
@@ -50,11 +50,15 @@ export default class GPU {
         });
 
         let vsModule = this.device.createShaderModule({
-            code: this.glslang.compileGLSL(vsCode, 'vertex')
+            code: this.glslang.compileGLSL(vsCode, 'vertex'),
+            source: vsCode,
+            transform: source => this.glslang.compileGLSL(source, 'vertex')
         });
 
         let fsModule = this.device.createShaderModule({
-            code: this.glslang.compileGLSL(fsCode, 'fragment')
+            code: this.glslang.compileGLSL(fsCode, 'fragment'),
+            source: fsCode,
+            transform: source => this.glslang.compileGLSL(source, 'vertex')
         });
 
         this.renderPipeline = this.device.createRenderPipeline({
@@ -69,7 +73,7 @@ export default class GPU {
             },
             primitiveTopology: 'triangle-list',
             vertexState: {
-                indexFormat: 'uint32',
+                // indexFormat: 'uint32',
                 vertexBuffers: [{
                     arrayStride: 4 * 3,
                     attributes: [
@@ -93,63 +97,20 @@ export default class GPU {
     }
 
     initGPUBuffer(vertexArray, indexArray, uniformArray) {
-        let vertexBuffer = this.device.createBuffer({
-            size: vertexArray.length * 4,
-            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
-        });
-
-        // vertexBuffer.setSubData(0, vertexArray);
-
-        /**
-         * In effect, GPUBuffer.setSubData() was removed from WebGPU spec, 
-         * according to the spec we should use the following code 
-         * to upload data to GPUBuffer, but it's really not easy to use.
-         * And because GPUBuffer.setSubData() is used by majority WebGPU samples,
-         * so acutally it is still supported by the implementation in Chrome Canary 
-         * So here we will keep using it until
-         * the work group find any other easy way to replace it.
-         */ 
-
-        // let [ vertexBuffer, buffer ] = this.device.createBufferMapped( {
-
-        //     size: vxArray.length * 4,
-
-        //     usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
-
-        // } );
-
-        // let view = new Float32Array( buffer );
-
-        // view.set( vxArray, 0 );
-
-        // vertexBuffer.unmap();
-
+        let vertexBuffer = this._updateBufferData(vertexArray, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST);
         this.renderPassEncoder.setVertexBuffer(0, vertexBuffer);
 
-        let indexBuffer = this.device.createBuffer({
-            size: indexArray.length * 4,
-            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
-        });
-
-        // indexBuffer.setSubData(0, indexArray);
-
+        let indexBuffer = this._updateBufferData(indexArray, GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST);
         this.renderPassEncoder.setIndexBuffer(indexBuffer);
 
-        let uniformBuffer = this.device.createBuffer({
-            size: uniformArray.length * 4,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        });
-
-        // uniformBuffer.setSubData(0, uniformArray);
-
+        let uniformBuffer = this._updateBufferData(uniformArray, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
         let uniformBindGroup = this.device.createBindGroup({
             layout: this.uniformGroupLayout,
-            bindings: [{
+            entries: [{
                 binding: 0,
                 resource: { buffer: uniformBuffer }
             }]
         });
-
         this.renderPassEncoder.setBindGroup(0, uniformBindGroup);
     }
 
@@ -160,5 +121,17 @@ export default class GPU {
     present() {
         this.renderPassEncoder.endPass();
         this.device.defaultQueue.submit([this.commandEncoder.finish()]);
+    }
+
+    _updateBufferData(src, usage) {
+        let [uploadBuffer, mapping] = this.device.createBufferMapped({
+            size: src.byteLength,
+            usage: usage
+        });
+
+        new src.constructor(mapping).set(src);
+        uploadBuffer.unmap();
+
+        return uploadBuffer;
     }
 }
