@@ -32,64 +32,97 @@
         canvas.style.height = '100%';
         document.body.appendChild(canvas);
 
-        let gpu = new GPU();
-        let context;
+        let gpu, context;
 
-        const triangleVertex = new Float32Array([
-            0.0, 1.0, 0.0,
-            -1.0, -1.0, 0.0,
-            1.0, -1.0, 0.0
-        ]);
+        async function main() {
+            gpu = new GPU();
+            await gpu.init();
 
-        const triangleIndex = new Uint32Array([0, 1, 2]);
+            context = new Context(canvas);
+            await context.init(gpu.device);
 
-        const triangleMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([-1.5, 0.0, -7.0]));
+            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, context.format);
 
-        const squareVertex = new Float32Array([
-            1.0, 1.0, 0.0,
-            -1.0, 1.0, 0.0,
-            1.0, -1.0, 0.0,
-            -1.0, -1.0, 0.0
-        ]);
+            // camera
 
-        const squareIndex = new Uint32Array([0, 1, 2, 1, 2, 3]);
+            const pMatrix = mat4.perspective(mat4.create(), Math.PI / 4, width / height, 0.1, 50);
 
-        const squareMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([1.5, 0.0, -7.0]));
+            // triangle
 
-        const pMatrix = mat4.perspective(mat4.create(), Math.PI / 4, width / height, 0.1, 50);
+            const triangleMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([-1.5, 0.0, -7.0]));
 
-        let triangleUniformBufferView = new Float32Array(16 * 2);
-        triangleUniformBufferView.set(pMatrix);
-        triangleUniformBufferView.set(triangleMVMatrix, 16);
+            const triangleUniformBufferView = new Float32Array(16 * 2);
+            triangleUniformBufferView.set(pMatrix);
+            triangleUniformBufferView.set(triangleMVMatrix, 16);
 
-        let squareUniformBufferView = new Float32Array(16 * 2);
-        squareUniformBufferView.set(pMatrix);
-        squareUniformBufferView.set(squareMVMatrix, 16);
+            const triangleVertexBuffer = gpu.createBuffer(new Float32Array([
+                0.0, 1.0, 0.0,
+                -1.0, -1.0, 0.0,
+                1.0, -1.0, 0.0
+            ]), GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST);
 
-        gpu.init()
-            .then(() => {
-                context = new Context(canvas);
-                context.init(gpu.device);
-            })
-            .then(() => {
-                gpu.initRenderPass(
+            const triangleIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2]), GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST);
+
+            const triangleUniformBuffer = gpu.createBuffer(triangleUniformBufferView, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+
+            // square
+
+            const squareMVMatrix = mat4.fromTranslation(mat4.create(), new Float32Array([1.5, 0.0, -7.0]));
+
+            const squareUniformBufferView = new Float32Array(16 * 2);
+            squareUniformBufferView.set(pMatrix);
+            squareUniformBufferView.set(squareMVMatrix, 16);
+
+            const squareVertexBuffer = gpu.createBuffer(new Float32Array([
+                1.0, 1.0, 0.0,
+                -1.0, 1.0, 0.0,
+                1.0, -1.0, 0.0,
+                -1.0, -1.0, 0.0
+            ]), GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST);
+
+            const squareIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2, 1, 2, 3]), GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST);
+
+            const squareUniformBuffer = gpu.createBuffer(squareUniformBufferView, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+
+            // render
+
+            function render() {
+                requestAnimationFrame(render);
+
+                gpu.createRenderPass(
                     context.swapChain.getCurrentTexture().createView(),
                     { r: 0, g: 0, b: 0, a: 1.0 },
                     width,
                     height
                 );
-                gpu.initPipeline(vsCode, fsCode, context.format);
 
-                gpu.initGPUBuffer(triangleVertex, triangleIndex, triangleUniformBufferView);
+                gpu.setPipeline(renderPipeline);
 
-                gpu.draw(triangleIndex.length);
+                gpu.bindAttributes({
+                    vertexBuffers: [triangleVertexBuffer],
+                    indexBuffer: triangleIndexBuffer
+                });
 
-                gpu.initGPUBuffer(squareVertex, squareIndex, squareUniformBufferView);
+                gpu.bindUniforms(triangleUniformBuffer, renderPipeline);
 
-                gpu.draw(squareIndex.length);
+                gpu.draw(triangleIndexBuffer.array.length);
+
+                gpu.bindAttributes({
+                    vertexBuffers: [squareVertexBuffer],
+                    indexBuffer: squareIndexBuffer
+                });
+
+                gpu.bindUniforms(squareUniformBuffer, renderPipeline);
+
+                gpu.draw(squareIndexBuffer.array.length);
 
                 gpu.present();
-            }).catch(e => console.error(e));
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        main();
     </script>
 </body>
 </html>

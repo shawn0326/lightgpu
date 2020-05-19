@@ -1,4 +1,6 @@
 import glslangModule from '../node_modules/@webgpu/glslang/dist/web-devel/glslang.onefile.js';
+import Buffer from './core/Buffer.js';
+import RenderPipeline from './core/RenderPipeline.js';
 
 export default class GPU {
 
@@ -9,9 +11,6 @@ export default class GPU {
 
         this.commandEncoder;
         this.renderPassEncoder;
-        this.renderPipeline;
-
-        this.uniformGroupLayout;
     }
 
     async init() {
@@ -19,10 +18,10 @@ export default class GPU {
             powerPerence: 'high-performance'
         });
         this.device = await this.adapter.requestDevice();
-        this.glslang = await glslangModule();
+        this.glslang = await glslangModule(); 
     }
 
-    initRenderPass(colorAttachment, clearColor, width, height) {
+    createRenderPass(colorAttachment, clearColor, width, height) {
         this.commandEncoder = this.device.createCommandEncoder();
 
         let renderPassDescriptor = {
@@ -36,79 +35,27 @@ export default class GPU {
         this.renderPassEncoder.setViewport(0, 0, width, height, 0, 1);
     }
 
-    initPipeline(vsCode, fsCode, format) {
-        this.uniformGroupLayout = this.device.createBindGroupLayout({
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX,
-                type: 'uniform-buffer'
-            }]
-        });
-
-        let layout = this.device.createPipelineLayout({
-            bindGroupLayouts: [this.uniformGroupLayout]
-        });
-
-        let vsModule = this.device.createShaderModule({
-            code: this.glslang.compileGLSL(vsCode, 'vertex'),
-            source: vsCode,
-            transform: source => this.glslang.compileGLSL(source, 'vertex')
-        });
-
-        let fsModule = this.device.createShaderModule({
-            code: this.glslang.compileGLSL(fsCode, 'fragment'),
-            source: fsCode,
-            transform: source => this.glslang.compileGLSL(source, 'vertex')
-        });
-
-        this.renderPipeline = this.device.createRenderPipeline({
-            layout,
-            vertexStage: {
-                module: vsModule,
-                entryPoint: 'main'
-            },
-            fragmentStage: {
-                module: fsModule,
-                entryPoint: 'main'
-            },
-            primitiveTopology: 'triangle-list',
-            vertexState: {
-                // indexFormat: 'uint32',
-                vertexBuffers: [{
-                    arrayStride: 4 * 3,
-                    attributes: [
-                        // position
-                        {
-                            shaderLocation: 0,
-                            offset: 0,
-                            format: 'float3'
-                        }
-                    ]
-                }]
-            },
-            colorStates: [
-                {
-                    format
-                }
-            ]
-        });
-
-        this.renderPassEncoder.setPipeline(this.renderPipeline);
+    setPipeline(pipeline) {
+        this.renderPassEncoder.setPipeline(pipeline.$getRenderPipeline());
     }
 
-    initGPUBuffer(vertexArray, indexArray, uniformArray) {
-        let vertexBuffer = this._updateBufferData(vertexArray, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST);
-        this.renderPassEncoder.setVertexBuffer(0, vertexBuffer);
+    bindAttributes(options) {
+        if (options.vertexBuffers) {
+            options.vertexBuffers.forEach((buffer, location) => {
+                this.renderPassEncoder.setVertexBuffer(location, buffer.$getGPUBuffer());
+            })
+        }
+        if (options.indexBuffer) {
+            this.renderPassEncoder.setIndexBuffer(options.indexBuffer.$getGPUBuffer());
+        }
+    }
 
-        let indexBuffer = this._updateBufferData(indexArray, GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST);
-        this.renderPassEncoder.setIndexBuffer(indexBuffer);
-
-        let uniformBuffer = this._updateBufferData(uniformArray, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+    bindUniforms(uniformBuffer, pipeline) {
         let uniformBindGroup = this.device.createBindGroup({
-            layout: this.uniformGroupLayout,
+            layout: pipeline.$getUniformGroupLayout(),
             entries: [{
                 binding: 0,
-                resource: { buffer: uniformBuffer }
+                resource: { buffer: uniformBuffer.$getGPUBuffer() }
             }]
         });
         this.renderPassEncoder.setBindGroup(0, uniformBindGroup);
@@ -123,15 +70,11 @@ export default class GPU {
         this.device.defaultQueue.submit([this.commandEncoder.finish()]);
     }
 
-    _updateBufferData(src, usage) {
-        let [uploadBuffer, mapping] = this.device.createBufferMapped({
-            size: src.byteLength,
-            usage: usage
-        });
+    createBuffer(typedArray, usage = GPUBufferUsage.COPY_DST) {
+        return new Buffer(this, typedArray, usage);
+    }
 
-        new src.constructor(mapping).set(src);
-        uploadBuffer.unmap();
-
-        return uploadBuffer;
+    createRenderPipeline(vsCode, fsCode, format) {
+        return new RenderPipeline(this, vsCode, fsCode, format);
     }
 }
