@@ -22,8 +22,8 @@
         import fsCode from './shaders/fragment.glsl.js';
         import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
 
-        let width = document.body.clientWidth;
-        let height =  document.body.clientHeight;
+        let width = window.innerWidth;
+        let height =  window.innerHeight;
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -83,6 +83,24 @@
             const squareIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2, 1, 2, 3]), GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST);
 
             const squareUniformBuffer = gpu.createBuffer(squareUniformBufferView, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+
+            // resize handle
+
+            window.addEventListener('resize', () => {
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                canvas.width = width;
+                canvas.height = height;
+
+                mat4.perspective(pMatrix, Math.PI / 4, width / height, 0.1, 50);
+
+                triangleUniformBuffer.array.set(pMatrix);
+                squareUniformBuffer.array.set(pMatrix);
+
+                triangleUniformBuffer.dirty();
+                squareUniformBuffer.dirty();
+            });
 
             // render
 

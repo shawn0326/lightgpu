@@ -7,6 +7,7 @@ export default class Buffer {
         this.usage = usage;
 
         this._gpuBuffer = null;
+        this._dataDirty = true;
     }
 
     destroy() {
@@ -17,10 +18,21 @@ export default class Buffer {
 
         if (this._gpuBuffer) {
             this._gpuBuffer.destroy();
+            this._gpuBuffer = null;
         }
     }
 
+    dirty() {
+        this._dataDirty = true;
+    }
+
     $getGPUBuffer() {
+        if (this._dataDirty && this._gpuBuffer) {
+            this._gpuBuffer.destroy();
+            this._gpuBuffer = null;
+            this._dataDirty = false;
+        }
+        
         if (!this._gpuBuffer) {
             let { device } = this.gpu;
             let [gpuBuffer, mapping] = device.createBufferMapped({
