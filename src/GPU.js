@@ -21,16 +21,11 @@ export default class GPU {
         this.glslang = await glslangModule(); 
     }
 
-    createRenderPass(colorAttachment, clearColor, width, height) {
+    createCommandEncoder() {
         this.commandEncoder = this.device.createCommandEncoder();
+    }
 
-        let renderPassDescriptor = {
-            colorAttachments: [{
-                attachment: colorAttachment,
-                loadValue: clearColor
-            }]
-        }
-
+    beginRenderPass(renderPassDescriptor, width, height) {
         this.renderPassEncoder = this.commandEncoder.beginRenderPass(renderPassDescriptor);
         this.renderPassEncoder.setViewport(0, 0, width, height, 0, 1);
     }
@@ -50,15 +45,8 @@ export default class GPU {
         }
     }
 
-    bindUniforms(uniformBuffer, pipeline) {
-        let uniformBindGroup = this.device.createBindGroup({
-            layout: pipeline.$getUniformGroupLayout(),
-            entries: [{
-                binding: 0,
-                resource: { buffer: uniformBuffer.$getGPUBuffer() }
-            }]
-        });
-        this.renderPassEncoder.setBindGroup(0, uniformBindGroup);
+    bindUniforms(unifromGroup) {
+        this.renderPassEncoder.setBindGroup(0, unifromGroup.$getBindGroup());
     }
 
     draw(indexCount) {
@@ -74,7 +62,7 @@ export default class GPU {
         return new Buffer(this, typedArray, usage);
     }
 
-    createRenderPipeline(vsCode, fsCode, format) {
-        return new RenderPipeline(this, vsCode, fsCode, format);
+    createRenderPipeline(vsCode, fsCode, format, sampleCount=1) {
+        return new RenderPipeline(this, vsCode, fsCode, format, sampleCount);
     }
 }

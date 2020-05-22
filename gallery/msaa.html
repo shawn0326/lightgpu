@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Triangle and Square</title>
+    <title>MSAA</title>
     <style>
         html, body {
             width: 100vw;
@@ -21,6 +21,8 @@
         import vsCode from './shaders/vertex.glsl.js';
         import fsCode from './shaders/fragment.glsl.js';
         import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
+
+        const sampleCount = 4;
 
         let width = window.innerWidth;
         let height =  window.innerHeight;
@@ -41,7 +43,18 @@
             context = new Context(canvas);
             await context.init(gpu.device);
 
-            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, context.format);
+            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, context.format, sampleCount);
+
+            let texture = gpu.device.createTexture({
+                size: {
+                    width: canvas.width,
+                    height: canvas.height,
+                    depth: 1,
+                },
+                sampleCount,
+                format: context.format,
+                usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+            });
 
             // camera
 
@@ -93,6 +106,21 @@
                 canvas.width = width;
                 canvas.height = height;
 
+                if (texture) {
+                    texture.destroy();
+
+                    texture = gpu.device.createTexture({
+                        size: {
+                            width: width,
+                            height: height,
+                            depth: 1,
+                        },
+                        sampleCount,
+                        format: context.format,
+                        usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+                    });
+                }
+
                 mat4.perspective(pMatrix, Math.PI / 4, width / height, 0.1, 50);
 
                 triangleUniformGroup.buffer.array.set(pMatrix);
@@ -117,14 +145,15 @@
                 gpu.beginRenderPass(
                     {
                         colorAttachments: [{
-                            attachment: context.swapChain.getCurrentTexture().createView(),
+                            attachment: texture.createView(),
+                            resolveTarget: context.swapChain.getCurrentTexture().createView(),
                             loadValue: { r: 0, g: 0, b: 0, a: 1.0 }
                         }]
                     },
                     width,
                     height
                 );
-                
+
                 gpu.setPipeline(renderPipeline);
 
                 gpu.bindAttributes({

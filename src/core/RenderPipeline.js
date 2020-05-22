@@ -1,14 +1,21 @@
+import UniformGroup from './UniformGroup.js';
+
 export default class RenderPipeline {
 
-    constructor(gpu, vsCode, fsCode, format) {
+    constructor(gpu, vsCode, fsCode, format, sampleCount) {
         this.gpu = gpu;
 
         this.vsCode = vsCode;
         this.fsCode = fsCode;
         this.format = format;
+        this.sampleCount = sampleCount;
 
         this._uniformGroupLayout = null;
         this._renderPipeline = null;
+    }
+
+    createUniformGroup(typedArray) {
+        return new UniformGroup(this, typedArray);
     }
 
     destroy() {
@@ -39,7 +46,7 @@ export default class RenderPipeline {
 
     _generateRenderPipleline() {
         let { device, glslang } = this.gpu;
-        let { vsCode, fsCode, format }  = this;
+        let { vsCode, fsCode, format, sampleCount }  = this;
 
         let uniformGroupLayout = device.createBindGroupLayout({
             entries: [{
@@ -94,7 +101,8 @@ export default class RenderPipeline {
                 {
                     format
                 }
-            ]
+            ],
+            sampleCount
         });
 
         this._uniformGroupLayout = uniformGroupLayout;
