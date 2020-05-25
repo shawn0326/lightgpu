@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Triangle and Square</title>
+    <title>texture</title>
     <style>
         html, body {
             width: 100vw;
@@ -17,9 +17,9 @@
 </head>
 <body>
     <script type="module">
-        import { GPU, Context } from '../src/index.js';
-        import vsCode from './shaders/default_vertex.glsl.js';
-        import fsCode from './shaders/default_fragment.glsl.js';
+        import { GPU, Context, loadImage } from '../src/index.js';
+        import vsCode from './shaders/map_vertex.glsl.js';
+        import fsCode from './shaders/map_fragment.glsl.js';
         import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
 
         let width = window.innerWidth;
@@ -41,7 +41,50 @@
             context = new Context(canvas);
             await context.init(gpu.device);
 
-            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, undefined, undefined, context.format);
+            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, {
+                // indexFormat: 'uint32',
+                vertexBuffers: [{
+                    arrayStride: 4 * 5,
+                    attributes: [
+                        // position
+                        {
+                            shaderLocation: 0,
+                            offset: 0,
+                            format: 'float3'
+                        },
+                        // uv
+                        {
+                            shaderLocation: 1,
+                            offset: 4 * 3,
+                            format: 'float2'
+                        }
+                    ]
+                }]
+            }, {
+                entries: [{
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    type: 'uniform-buffer'
+                }, {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    type: "sampler"
+                }, {
+                    binding: 2,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    type: "sampled-texture"
+                }]
+            }, context.format);
+
+            // texture
+
+            const sampler = gpu.device.createSampler({
+                magFilter: "linear",
+                minFilter: "linear",
+            });
+
+            const imageInfo = await loadImage('./textures/crate.gif');
+            const texture = gpu.createTexture(imageInfo.data, imageInfo.width, imageInfo.height);
 
             // camera
 
@@ -56,16 +99,18 @@
             triangleUniformBufferView.set(triangleMVMatrix, 16);
 
             const triangleVertexBuffer = gpu.createBuffer(new Float32Array([
-                0.0, 1.0, 0.0,
-                -1.0, -1.0, 0.0,
-                1.0, -1.0, 0.0
+                0.0, 1.0, 0.0, 0.5, 0,
+                -1.0, -1.0, 0.0, 0, 1,
+                1.0, -1.0, 0.0, 1, 1
             ]), GPUBufferUsage.VERTEX);
 
             const triangleIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2]), GPUBufferUsage.INDEX);
 
             const triangleUniformBuffer = gpu.createBuffer(triangleUniformBufferView, GPUBufferUsage.UNIFORM);
             const triangleUniformGroup = renderPipeline.createUniformGroup([
-                triangleUniformBuffer
+                triangleUniformBuffer,
+                sampler,
+                texture
             ]);
 
             // square
@@ -77,17 +122,19 @@
             squareUniformBufferView.set(squareMVMatrix, 16);
 
             const squareVertexBuffer = gpu.createBuffer(new Float32Array([
-                1.0, 1.0, 0.0,
-                -1.0, 1.0, 0.0,
-                1.0, -1.0, 0.0,
-                -1.0, -1.0, 0.0
+                1.0, 1.0, 0.0, 1.0, 1.0,
+                -1.0, 1.0, 0.0, 0.0, 1.0,
+                1.0, -1.0, 0.0, 1.0, 0.0,
+                -1.0, -1.0, 0.0, 0.0, 0.0
             ]), GPUBufferUsage.VERTEX);
 
             const squareIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2, 1, 2, 3]), GPUBufferUsage.INDEX);
 
             const squareUniformBuffer = gpu.createBuffer(squareUniformBufferView, GPUBufferUsage.UNIFORM);
             const squareUniformGroup = renderPipeline.createUniformGroup([
-                squareUniformBuffer
+                squareUniformBuffer,
+                sampler,
+                texture
             ]);
 
             // resize handle
@@ -117,7 +164,8 @@
 
                 let uploadBuffers = [
                     triangleUniformBuffer.$update(),
-                    squareUniformBuffer.$update()
+                    squareUniformBuffer.$update(),
+                    texture.$update()
                 ];
 
                 gpu.beginRenderPass(

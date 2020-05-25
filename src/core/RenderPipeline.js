@@ -1,12 +1,37 @@
 import UniformGroup from './UniformGroup.js';
 
+const defaultVertexState = {
+    // indexFormat: 'uint32',
+    vertexBuffers: [{
+        arrayStride: 4 * 3,
+        attributes: [
+            // position
+            {
+                shaderLocation: 0,
+                offset: 0,
+                format: 'float3'
+            }
+        ]
+    }]
+};
+
+const defaultBindGroupLayout = {
+    entries: [{
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        type: 'uniform-buffer'
+    }]
+};
+
 export default class RenderPipeline {
 
-    constructor(gpu, vsCode, fsCode, format, sampleCount) {
+    constructor(gpu, vsCode, fsCode, vertexState = defaultVertexState, bindGroupLayout = defaultBindGroupLayout, format = 'rgba8unorm', sampleCount = 1) {
         this.gpu = gpu;
 
         this.vsCode = vsCode;
         this.fsCode = fsCode;
+        this.vertexState = vertexState;
+        this.bindGroupLayout = bindGroupLayout;
         this.format = format;
         this.sampleCount = sampleCount;
 
@@ -14,14 +39,15 @@ export default class RenderPipeline {
         this._renderPipeline = null;
     }
 
-    createUniformGroup(typedArray) {
-        return new UniformGroup(this, typedArray);
+    createUniformGroup(resources) {
+        return new UniformGroup(this, resources);
     }
 
     destroy() {
         this.gpu = null;
         this.vsCode = null;
         this.fsCode = null;
+        this.vertexState = null;
         this.format = null;
         if(this._renderPipeline) {
             // todo destroy pipleline & uniformGroupLayout
@@ -48,13 +74,7 @@ export default class RenderPipeline {
         let { device, glslang } = this.gpu;
         let { vsCode, fsCode, format, sampleCount }  = this;
 
-        let uniformGroupLayout = device.createBindGroupLayout({
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX,
-                type: 'uniform-buffer'
-            }]
-        });
+        let uniformGroupLayout = device.createBindGroupLayout(this.bindGroupLayout);
 
         let layout = device.createPipelineLayout({
             bindGroupLayouts: [uniformGroupLayout]
@@ -83,20 +103,7 @@ export default class RenderPipeline {
                 entryPoint: 'main'
             },
             primitiveTopology: 'triangle-list',
-            vertexState: {
-                // indexFormat: 'uint32',
-                vertexBuffers: [{
-                    arrayStride: 4 * 3,
-                    attributes: [
-                        // position
-                        {
-                            shaderLocation: 0,
-                            offset: 0,
-                            format: 'float3'
-                        }
-                    ]
-                }]
-            },
+            vertexState: this.vertexState,
             colorStates: [
                 {
                     format

@@ -18,8 +18,8 @@
 <body>
     <script type="module">
         import { GPU, Context } from '../src/index.js';
-        import vsCode from './shaders/vertex.glsl.js';
-        import fsCode from './shaders/fragment.glsl.js';
+        import vsCode from './shaders/default_vertex.glsl.js';
+        import fsCode from './shaders/default_fragment.glsl.js';
         import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
 
         const sampleCount = 4;
@@ -43,7 +43,7 @@
             context = new Context(canvas);
             await context.init(gpu.device);
 
-            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, context.format, sampleCount);
+            const renderPipeline = gpu.createRenderPipeline(vsCode, fsCode, undefined, undefined, context.format, sampleCount);
 
             let texture = gpu.device.createTexture({
                 size: {
@@ -76,7 +76,10 @@
 
             const triangleIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2]), GPUBufferUsage.INDEX);
 
-            const triangleUniformGroup = renderPipeline.createUniformGroup(triangleUniformBufferView);
+            const triangleUniformBuffer = gpu.createBuffer(triangleUniformBufferView, GPUBufferUsage.UNIFORM);
+            const triangleUniformGroup = renderPipeline.createUniformGroup([
+                triangleUniformBuffer
+            ]);
 
             // square
 
@@ -95,7 +98,10 @@
 
             const squareIndexBuffer = gpu.createBuffer(new Uint32Array([0, 1, 2, 1, 2, 3]), GPUBufferUsage.INDEX);
 
-            const squareUniformGroup = renderPipeline.createUniformGroup(squareUniformBufferView);
+            const squareUniformBuffer = gpu.createBuffer(squareUniformBufferView, GPUBufferUsage.UNIFORM);
+            const squareUniformGroup = renderPipeline.createUniformGroup([
+                squareUniformBuffer
+            ]);
 
             // resize handle
 
@@ -123,11 +129,11 @@
 
                 mat4.perspective(pMatrix, Math.PI / 4, width / height, 0.1, 50);
 
-                triangleUniformGroup.buffer.array.set(pMatrix);
-                squareUniformGroup.buffer.array.set(pMatrix);
+                triangleUniformBuffer.array.set(pMatrix);
+                squareUniformBuffer.array.set(pMatrix);
 
-                triangleUniformGroup.buffer.dirty();
-                squareUniformGroup.buffer.dirty();
+                triangleUniformBuffer.dirty();
+                squareUniformBuffer.dirty();
             });
 
             // render
@@ -138,8 +144,8 @@
                 gpu.createCommandEncoder();
 
                 let uploadBuffers = [
-                    triangleUniformGroup.buffer.$update(),
-                    squareUniformGroup.buffer.$update()
+                    triangleUniformBuffer.$update(),
+                    squareUniformBuffer.$update()
                 ];
 
                 gpu.beginRenderPass(

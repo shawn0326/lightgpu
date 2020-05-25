@@ -1,5 +1,6 @@
 import glslangModule from '../node_modules/@webgpu/glslang/dist/web-devel/glslang.onefile.js';
 import Buffer from './core/Buffer.js';
+import Texture from './core/Texture.js';
 import RenderPipeline from './core/RenderPipeline.js';
 
 export default class GPU {
@@ -62,7 +63,11 @@ export default class GPU {
         return new Buffer(this, typedArray, usage);
     }
 
-    createRenderPipeline(vsCode, fsCode, format, sampleCount=1) {
-        return new RenderPipeline(this, vsCode, fsCode, format, sampleCount);
+    createTexture(typedArray, width, height) {
+        return new Texture(this, typedArray, width, height);
+    }
+
+    createRenderPipeline(vsCode, fsCode, vertexState, bindGroupLayout, format, sampleCount) {
+        return new RenderPipeline(this, vsCode, fsCode, vertexState, bindGroupLayout, format, sampleCount);
     }
 }
