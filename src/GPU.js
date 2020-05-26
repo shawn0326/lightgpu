@@ -50,8 +50,8 @@ export default class GPU {
         this.renderPassEncoder.setBindGroup(0, unifromGroup.$getBindGroup());
     }
 
-    draw(indexCount) {
-        this.renderPassEncoder.drawIndexed(indexCount, 1, 0, 0, 0);
+    draw(indexCount, instanceCount = 1) {
+        this.renderPassEncoder.drawIndexed(indexCount, instanceCount, 0, 0, 0);
     }
 
     present() {

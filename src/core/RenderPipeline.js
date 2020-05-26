@@ -31,6 +31,8 @@ export default class RenderPipeline {
         this.vsCode = vsCode;
         this.fsCode = fsCode;
         this.vertexState = vertexState;
+        this.rasterizationState = {};
+        this.depthStencilState = {};
         this.bindGroupLayout = bindGroupLayout;
         this.format = format;
         this.sampleCount = sampleCount;
@@ -103,12 +105,14 @@ export default class RenderPipeline {
                 entryPoint: 'main'
             },
             primitiveTopology: 'triangle-list',
+            depthStencilState: this.depthStencilState,
             vertexState: this.vertexState,
             colorStates: [
                 {
                     format
                 }
             ],
+            rasterizationState: this.rasterizationState,
             sampleCount
         });
 
