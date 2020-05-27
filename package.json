@@ -22,7 +22,8 @@
   "homepage": "https://github.com/shawn0326/lightgpu#readme",
   "dependencies": {
     "@webgpu/glslang": "0.0.13",
-    "gl-matrix": "^3.1.0"
+    "gl-matrix": "^3.1.0",
+    "stats.js": "^0.17.0"
   },
   "devDependencies": {
     "eslint": "^5.14.1"

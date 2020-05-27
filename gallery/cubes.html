@@ -17,6 +17,7 @@
 </head>
 <body>
     <script type="module">
+        import Stats from '../node_modules/stats.js/src/Stats.js';
         import { GPU, Context, loadImage } from '../src/index.js';
         import vsCode from './shaders/instanced_vertex.glsl.js';
         import fsCode from './shaders/instanced_fragment.glsl.js';
@@ -219,10 +220,27 @@
                 cubeUniformBuffer1.dirty();
             });
 
+            let stats = new Stats();
+            stats.showPanel(1);
+            document.body.appendChild(stats.dom);
+
             // render
 
             function render() {
                 requestAnimationFrame(render);
+
+                stats.begin();
+
+                // rotate
+                let i, j;
+                for(i = 0; i < num; i++) {
+                    for (j = 0; j < 16; j++) {
+                        helpMat4[j] = cubeMVMatrices[i * 16 + j];
+                    }
+                    mat4.rotateY(helpMat4, helpMat4, 0.01);
+                    cubeMVMatrices.set(helpMat4, i * 16);
+                }
+                cubeUniformBuffer2.dirty();
 
                 gpu.createCommandEncoder();
 
@@ -267,6 +285,8 @@
                 uploadBuffers.forEach(uploadBuffer => {
                     if(uploadBuffer) uploadBuffer.destroy();
                 });
+
+                stats.end();
             }
 
             requestAnimationFrame(render);
