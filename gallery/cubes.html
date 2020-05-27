@@ -23,6 +23,8 @@
         import fsCode from './shaders/instanced_fragment.glsl.js';
         import { mat4, vec3 } from '../node_modules/gl-matrix/esm/index.js';
 
+        const sampleCount = 4;
+
         let width = window.innerWidth;
         let height =  window.innerHeight;
 
@@ -79,7 +81,7 @@
                     visibility: GPUShaderStage.FRAGMENT,
                     type: "sampled-texture"
                 }]
-            }, context.format);
+            }, context.format, sampleCount);
             renderPipeline.rasterizationState = {
                 frontFace: "cw"
             };
@@ -89,12 +91,24 @@
                 format: "depth24plus-stencil8"
             };
 
+            let colorTexture = gpu.device.createTexture({
+                size: {
+                    width: canvas.width,
+                    height: canvas.height,
+                    depth: 1,
+                },
+                sampleCount,
+                format: context.format,
+                usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+            });
+
             let depthTexture = gpu.device.createTexture({
                 size: {
                     width: canvas.width,
                     height: canvas.height,
                     depth: 1,
                 },
+                sampleCount,
                 format: "depth24plus-stencil8",
                 usage: GPUTextureUsage.OUTPUT_ATTACHMENT
             });
@@ -104,9 +118,10 @@
             const sampler = gpu.device.createSampler({
                 magFilter: "linear",
                 minFilter: "linear",
+                mipmapFilter: "linear"
             });
 
-            const imageInfo = await loadImage('./textures/crate.gif');
+            const imageInfo = await loadImage('./textures/crate.gif'); // TODO generate mipmaps
             const texture = gpu.createTexture(imageInfo.data, imageInfo.width, imageInfo.height);
 
             // camera
@@ -201,6 +216,21 @@
                 canvas.width = width;
                 canvas.height = height;
 
+                if (colorTexture) {
+                    colorTexture.destroy();
+
+                    colorTexture = gpu.device.createTexture({
+                        size: {
+                            width: width,
+                            height: height,
+                            depth: 1,
+                        },
+                        sampleCount,
+                        format: context.format,
+                        usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+                    });
+                }
+
                 if (depthTexture) {
                     depthTexture.destroy();
 
@@ -210,6 +240,7 @@
                             height: height,
                             depth: 1,
                         },
+                        sampleCount,
                         format: "depth24plus-stencil8",
                         usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
                     });
@@ -253,7 +284,8 @@
                 gpu.beginRenderPass(
                     {
                         colorAttachments: [{
-                            attachment: context.swapChain.getCurrentTexture().createView(),
+                            attachment: colorTexture.createView(),
+                            resolveTarget: context.swapChain.getCurrentTexture().createView(),
                             loadValue: { r: 0, g: 0, b: 0, a: 1.0 }
                         }],
                         depthStencilAttachment: {
