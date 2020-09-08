@@ -1,7 +1,7 @@
   
 export default `
     #version 450
-    #define MAX_NUM_INSTANCES 1000
+    #define MAX_NUM_INSTANCES 100
     layout(binding = 0) uniform Uniforms {
         mat4 uPMatrix;
     };

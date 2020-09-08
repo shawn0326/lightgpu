@@ -32,7 +32,7 @@ export default class RenderPipeline {
         this.fsCode = fsCode;
         this.vertexState = vertexState;
         this.rasterizationState = {};
-        this.depthStencilState = {};
+        this.depthStencilState = undefined;
         this.bindGroupLayout = bindGroupLayout;
         this.format = format;
         this.sampleCount = sampleCount;

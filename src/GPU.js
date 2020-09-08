@@ -42,7 +42,8 @@ export default class GPU {
             })
         }
         if (options.indexBuffer) {
-            this.renderPassEncoder.setIndexBuffer(options.indexBuffer.$getGPUBuffer());
+            const indexFormat = ( options.indexBuffer.array instanceof Uint16Array ) ? 'uint16' : 'uint32';
+            this.renderPassEncoder.setIndexBuffer(options.indexBuffer.$getGPUBuffer(), indexFormat);
         }
     }
 

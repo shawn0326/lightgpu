@@ -33,12 +33,13 @@ export default class Buffer {
 
         let { device, commandEncoder } = this.gpu;
 
-        let [uploadBuffer, mapping] = device.createBufferMapped({
+        let uploadBuffer = device.createBuffer({
             size: this.array.byteLength,
-            usage: GPUBufferUsage.COPY_SRC
+            usage: this.usage | GPUBufferUsage.COPY_SRC,
+            mappedAtCreation: true
         });
 
-        new this.array.constructor(mapping).set(this.array);
+        new this.array.constructor(uploadBuffer.getMappedRange()).set(this.array);
         uploadBuffer.unmap();
 
         commandEncoder.copyBufferToBuffer(uploadBuffer, 0, this._gpuBuffer, 0, this.array.byteLength);
@@ -55,12 +56,13 @@ export default class Buffer {
 
         let { device } = this.gpu;
 
-        let [gpuBuffer, mapping] = device.createBufferMapped({
+        let gpuBuffer = device.createBuffer({
             size: this.array.byteLength,
-            usage: this.usage | GPUBufferUsage.COPY_DST
+            usage: this.usage | GPUBufferUsage.COPY_SRC,
+            mappedAtCreation: true
         });
 
-        new this.array.constructor(mapping).set(this.array);
+        new this.array.constructor(gpuBuffer.getMappedRange()).set(this.array);
         gpuBuffer.unmap();
 
         this._gpuBuffer = gpuBuffer;
